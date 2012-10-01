@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension
+         id="XPLogger.Application"
+         point="org.eclipse.core.runtime.applications">
+      <application
+            visible="true">
+         <run
+               class="xplogger.Application">
+         </run>
+      </application>
+   </extension>
+   <extension
+         point="org.eclipse.ui.perspectives">
+      <perspective
+            name="RCP Perspective"
+            class="xplogger.Perspective"
+            id="XPLogger.perspective">
+      </perspective>
+   </extension>
+   <extension
+         point="org.eclipse.ui.views">
+      <view
+            allowMultiple="false"
+            class="xplogger.views.XPLoggerView"
+            id="xplogger.views.xploggerview"
+            name="XPLogger View"
+            restorable="true">
+      </view>
+   </extension>
+   <extension
+         id="product"
+         point="org.eclipse.core.runtime.products">
+      <product
+            application="XPLogger.Application"
+            name="XPLogger">
+         <property
+               name="appName"
+               value="XPLogger">
+         </property>
+      </product>
+   </extension>
+
+</plugin>
