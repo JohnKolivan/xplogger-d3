@@ -7,8 +7,7 @@ import java.util.List;
 import org.joda.time.DateTime;
 
 import xplogger.events.XPLoggerEvents;
-import xplogger.util.Run;
-import xplogger.util.RunEntry;
+import xplogger.util.*;
 
 import gov.usgs.nwrc.internal.model.classes.AbstractModel;
 
@@ -19,6 +18,8 @@ public class XPLoggerModel extends AbstractModel implements IXPLoggerModel
 	String m_OutputPath = "";
 	List<String> m_ImageFilenames = new ArrayList<String>();
 	Run m_CurrentRun = new Run();
+	List<ZoneData> m_ZoneData = new ArrayList<ZoneData>();
+	
 	List<Run> m_Runs = new ArrayList<Run>();
 	
 	@Override
@@ -61,6 +62,7 @@ public class XPLoggerModel extends AbstractModel implements IXPLoggerModel
 	@Override
 	public void clearAllData(){
 		m_CurrentRun.clear();
+		m_ZoneData.clear();
 		m_Runs.clear();
 	}
 	
@@ -87,4 +89,22 @@ public class XPLoggerModel extends AbstractModel implements IXPLoggerModel
 	public List<Run> getAllRunData(){
 		return m_Runs;
 	}
+	
+	@Override
+	public ZoneData getZoneData(final int p_Index){
+		if(m_ZoneData.size() < p_Index){
+			return null;
+		}
+		return m_ZoneData.get(p_Index-1);
+	}
+	
+	@Override
+	public void addZoneData(final int p_ZoneIndex, final ZoneEntry p_Data){
+		if(m_ZoneData.size() <= p_ZoneIndex){
+			m_ZoneData.add(new ZoneData());
+		}
+		
+		m_ZoneData.get(p_ZoneIndex-1).add(p_Data);
+	}
+	
 }

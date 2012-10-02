@@ -12,6 +12,8 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 import xplogger.events.XPLoggerEvents;
@@ -31,10 +33,9 @@ public class XPLoggerView extends AbstractViewPart implements IXPLoggerView, Sel
 	private Button m_ButtonClear;
 
 	private Button	m_ButtonStop;
+	private Button m_ButtonNewRun;
+	private Button m_ButtonMakeCopy;
 	
-	public XPLoggerView() {
-
-	}
 
 	@Override
 	public void createPartControl(Composite parent)
@@ -59,7 +60,7 @@ public class XPLoggerView extends AbstractViewPart implements IXPLoggerView, Sel
 		
 		composite = new Composite(parent, SWT.NONE);
 		composite.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false, 1, 1));
-		composite.setLayout(new GridLayout(3, false));
+		composite.setLayout(new GridLayout(4, false));
 		
 		m_ButtonStart = new Button(composite, SWT.NONE);
 		GridData gd_m_ButtonStartService = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1);
@@ -79,6 +80,15 @@ public class XPLoggerView extends AbstractViewPart implements IXPLoggerView, Sel
 		m_ButtonStop.setData(XPLoggerEvents.STOP);
 		m_ButtonStop.addSelectionListener(this);
 		
+		m_ButtonNewRun = new Button(composite, SWT.NONE);
+		GridData gd_m_ButtonNewRun = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1);
+		gd_m_ButtonNewRun.widthHint = 80;
+		m_ButtonNewRun.setLayoutData(gd_m_ButtonNewRun);
+		m_ButtonNewRun.setText("New Run");
+		m_ButtonNewRun.addSelectionListener(this);
+		m_ButtonNewRun.setData(XPLoggerEvents.NEW_RUN);
+		m_ButtonNewRun.setEnabled(false);
+		
 		m_ButtonClear = new Button(composite, SWT.NONE);
 		GridData gd_m_ButtonClear = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1);
 		gd_m_ButtonClear.widthHint = 80;
@@ -86,7 +96,16 @@ public class XPLoggerView extends AbstractViewPart implements IXPLoggerView, Sel
 		m_ButtonClear.setText("Clear");
 		m_ButtonClear.setData(XPLoggerEvents.CLEAR);
 		m_ButtonClear.addSelectionListener(this);
-		new Label(parent, SWT.NONE);
+
+		m_ButtonMakeCopy = new Button(parent, SWT.NONE);
+		GridData gd_m_ButtonMakeCopy = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1);
+		gd_m_ButtonMakeCopy.widthHint = 80;
+		m_ButtonMakeCopy.setLayoutData(gd_m_ButtonMakeCopy);
+		m_ButtonMakeCopy.setText("Make Copy");
+		m_ButtonMakeCopy.addSelectionListener(this);
+		m_ButtonMakeCopy.setData(XPLoggerEvents.MAKE_COPY);
+		m_ButtonMakeCopy.setVisible(false);
+		m_ButtonMakeCopy.setEnabled(false);
 		
 		Label label = new Label(parent, SWT.SEPARATOR | SWT.HORIZONTAL);
 		GridData gd_label = new GridData(SWT.FILL, SWT.CENTER, true, false, 3, 1);
@@ -128,6 +147,13 @@ public class XPLoggerView extends AbstractViewPart implements IXPLoggerView, Sel
 				break;
 			case STOP:
 				m_ButtonStop.setEnabled(p_Enabled);
+				break;
+			case NEW_RUN:
+				m_ButtonNewRun.setEnabled(p_Enabled);
+				break;
+			case MAKE_COPY:
+				m_ButtonMakeCopy.setEnabled(p_Enabled);
+				break;
 		}
 	}
 	

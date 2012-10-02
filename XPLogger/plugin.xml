@@ -23,10 +23,10 @@
    <extension
          point="org.eclipse.ui.views">
       <view
-            allowMultiple="false"
+            allowMultiple="true"
             class="xplogger.views.XPLoggerView"
             id="xplogger.views.xploggerview"
-            name="XPLogger View"
+            name="Main View"
             restorable="true">
       </view>
    </extension>
@@ -39,6 +39,10 @@
          <property
                name="appName"
                value="XPLogger">
+         </property>
+         <property
+               name="aboutText"
+               value="Created by: &#x0A;&#x0A;BNET Battletag (US)&#x0A;Diabloxk#1657">
          </property>
       </product>
    </extension>

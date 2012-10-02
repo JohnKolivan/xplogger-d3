@@ -11,17 +11,32 @@ import org.joda.time.format.PeriodFormatterBuilder;
 
 public class Run extends ArrayList<RunEntry>{
 	
-	static PeriodFormatter PERIOD_FORMAT =  new PeriodFormatterBuilder().printZeroAlways().minimumPrintedDigits(2).appendHours().appendLiteral(":").appendMinutes().appendLiteral(":").appendSeconds().toFormatter();
+	public static PeriodFormatter PERIOD_FORMAT =  new PeriodFormatterBuilder().printZeroNever().minimumPrintedDigits(2).appendHours().appendSeparatorIfFieldsBefore(":").printZeroAlways().appendMinutes().appendLiteral(":").appendSeconds().toFormatter();
 	
 	public Period getTotalDuration(){
 		return new Period(get(0).m_Time, get(size()-1).m_Time);
 	}
 	
 	public Period getDuration(final int p_StartEntry, final int p_EndEntry){
-		if(size() == 0 || size() < p_EndEntry){
+		if(size() == 0 || size() < p_EndEntry || p_StartEntry < 0){
 			return null;
 		}
 		return new Period(get(p_StartEntry).m_Time, get(p_EndEntry).m_Time);
+	}
+	
+	public int getExpGained(final int p_StartEntry, final int p_EndEntry){
+		if(size() == 0 || size() < p_EndEntry){
+			return Integer.MIN_VALUE;
+		}
+		
+		//if no level up occurred
+		if(get(p_StartEntry).m_MaxExp.equals(get(p_EndEntry).m_MaxExp)){
+			return Integer.parseInt(get(p_EndEntry).m_CurrentExp) - Integer.parseInt(get(p_StartEntry).m_CurrentExp);
+		}
+		
+		//if leveled up
+		return Integer.parseInt(get(p_StartEntry).m_MaxExp) - Integer.parseInt(get(p_StartEntry).m_CurrentExp) + Integer.parseInt(get(p_EndEntry).m_CurrentExp);
+		
 		
 	}
 	
@@ -39,7 +54,7 @@ public class Run extends ArrayList<RunEntry>{
 		if(size() == 0){
 			return false;
 		}
-		return !get(0).m_ParagonLevel.equals(get(size()-1).m_ParagonLevel);
+		return !getStartingParagonLevel().equals(getEndingParagonLevel());
 	}
 	
 	public int getStartingExp(){
@@ -66,6 +81,13 @@ public class Run extends ArrayList<RunEntry>{
 			return "ERROR";
 		}
 		return get(0).m_ParagonLevel;
+	}
+	
+	public String getEndingParagonLevel(){
+		if(size() == 0){
+			return "ERROR";
+		}
+		return getLast().m_ParagonLevel;
 	}
 	
 	public float getExpPerHour(){
@@ -100,6 +122,7 @@ public class Run extends ArrayList<RunEntry>{
 			}else{
 				returnValue[i-1] = Integer.toString(Integer.parseInt(get(i).m_CurrentExp) - Integer.parseInt(get(i-1).m_CurrentExp));
 			}
+			returnValue[i-1] = Float.toString(Math.round(Integer.parseInt(returnValue[i-1])/10000f)/100f);
 			returnValue[i-1] += " - " + PERIOD_FORMAT.print(getDuration(i-1, i));
 		}
 		
