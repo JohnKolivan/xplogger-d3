@@ -9,6 +9,7 @@ import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.awt.image.FilteredImageSource;
@@ -40,11 +41,12 @@ import java.nio.file.WatchService;
 import javax.imageio.ImageIO;
 
 import net.sourceforge.tess4j.Tesseract;
-import net.sourceforge.tess4j.TesseractException;
 
 import org.eclipse.swt.SWT;
+
 import org.joda.time.DateTime;
 import org.joda.time.Period;
+import org.joda.time.Seconds;
 import org.joda.time.format.PeriodFormatter;
 import org.joda.time.format.PeriodFormatterBuilder;
 
@@ -53,7 +55,10 @@ import xplogger.models.IXPLoggerModel;
 import xplogger.util.ColumnNames;
 import xplogger.util.Run;
 import xplogger.util.RunEntry;
+import xplogger.util.ZoneData;
+import xplogger.util.ZoneEntry;
 import xplogger.views.IXPLoggerView;
+
 
 
 public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLoggerView> implements IXPLoggerPresenter
@@ -70,6 +75,14 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 	{
 		super(p_ModelCallable, p_ViewCallable);
 		m_TimeFormat = new PeriodFormatterBuilder().printZeroAlways().minimumPrintedDigits(2).appendHours().appendLiteral(":").appendMinutes().appendLiteral(":").appendSeconds().toFormatter();
+		
+		final String path = getLastFilterPath();
+		if(path.length()> 0 && new File(path).isDirectory() && new File(path).canRead()){
+			setLastFilterPath(path);
+			m_Model.setPath(XPLoggerEvents.INPUT_BROWSE, path);
+			m_View.setPath(XPLoggerEvents.INPUT_BROWSE, path);
+			m_View.setWidgetEnabled(XPLoggerEvents.START, m_Model.getPath(XPLoggerEvents.INPUT_BROWSE) != null && !FILE_WATCHER_IS_RUNNING);
+		}
 	}
 
 	@Override
@@ -78,8 +91,10 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 		XPLoggerEvents event = XPLoggerEvents.valueOf(p_Event.getPropertyName());
 		
 		switch(event){
-			
-			
+			case CLOSE:
+				if(FILE_WATCHER_IS_RUNNING){
+					m_WatcherJob.getThread().interrupt();
+				}
 			case INPUT_BROWSE:
 				if(m_Model.getPath(event).length() > 0){
 					m_Model.setPath(event, "");
@@ -101,6 +116,11 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 				setLastFilterPath(directory);
 				m_Model.setPath(event, directory);
 				m_View.setPath(event, directory);
+				
+				if(FILE_WATCHER_IS_RUNNING){
+					FILE_WATCHER_IS_RUNNING = false;
+					m_WatcherJob.getThread().interrupt();
+				}
 				
 				break;
 			case OUTPUT_BROWSE:
@@ -136,9 +156,18 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 				m_WatcherJob.getThread().interrupt();
 				break;
 				
+			case NEW_RUN:
+				
+				m_Model.addRun(m_Model.getCurrentRunData());
+				m_Model.setCurrentRun(new Run());
+				
+				break;
 			case CLEAR:
 				m_Model.clearAllData();
 				m_View.clearTable();
+				
+				break;
+			case MAKE_COPY:
 				
 				break;
 		}
@@ -150,6 +179,8 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 			{
 				m_View.setWidgetEnabled(XPLoggerEvents.START, m_Model.getPath(XPLoggerEvents.INPUT_BROWSE) != null && !FILE_WATCHER_IS_RUNNING);
 				m_View.setWidgetEnabled(XPLoggerEvents.STOP, m_Model.getPath(XPLoggerEvents.INPUT_BROWSE) != null && FILE_WATCHER_IS_RUNNING);
+				m_View.setWidgetEnabled(XPLoggerEvents.NEW_RUN, m_Model.getCurrentRunData().size() > 0);
+				//m_View.setWidgetEnabled(XPLoggerEvents.MAKE_COPY, m_Model.getAllRunData().size() > 0 || m_Model.getCurrentRunData().size() > 0);
 				return true;
 			}
 		});
@@ -158,7 +189,7 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 	protected void createWatcherJob(){
 		final PropertyChangeListener listener = this;
 		
-		m_WatcherJob = new Job("File Watcher"){
+		m_WatcherJob = new Job("Waiting for screenshots..."){
 
 			final PropertyChangeSupport m_PropChangeSupport = new PropertyChangeSupport("WatcherJob");
 			
@@ -212,18 +243,16 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 	
 	
 	protected RunEntry processImage(final String p_Filename){
-		Tesseract tess = Tesseract.getInstance();
+		final Tesseract tess = Tesseract.getInstance();
 		tess.setDatapath("%PROGRAMFILES(X86)%\\Tesseract-OCR\\");
 		tess.setLanguage("eng");
 			
 		try
 		{
-			File file = new File(m_Model.getPath(XPLoggerEvents.INPUT_BROWSE) + File.separator + p_Filename);
-			DateTime endTime = new DateTime(file.lastModified());
+			final File file = new File(m_Model.getPath(XPLoggerEvents.INPUT_BROWSE) + File.separator + p_Filename);
+			final DateTime endTime = new DateTime(file.lastModified());
+			final BufferedImage expImage = grabSubImage(ImageIO.read(file), new Rectangle(745, 995, 425, 30), 4);  //(745,995)-> (1170,1025)
 			
-			BufferedImage image;
-			image = ImageIO.read(file);
-			BufferedImage expImage = grabSubImage(image, new Rectangle(750, 1000, 412, 26), 4);
 			String expBarHoverText = tess.doOCR(expImage).trim().replaceAll("\\s", "").replace(",", "");
 			String paragonLevel = expBarHoverText.split("(\\(|\\))")[1].intern();
 			
@@ -248,178 +277,6 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 		return null;
 	}
 	
-	protected void collectDataFromScreenshots(){
-		
-		m_Model.clearAllData();
-		m_View.clearTable();
-		
-		Tesseract tess = Tesseract.getInstance();
-		tess.setDatapath("C:\\Program Files (x86)\\Tesseract-OCR\\");
-		tess.setLanguage("eng");
-		
-		final DateTime startTime = DateTime.now();
-		
-		List<RunEntry> entryList = new ArrayList<RunEntry>();
-		int runCount = 0;
-		String prevExp = "";
-			
-			try
-			{
-				
-				File file = new File(m_Model.getPath(XPLoggerEvents.INPUT_BROWSE) + File.separator );//+ filename);
-				DateTime endTime = new DateTime(file.lastModified());
-				
-				BufferedImage image;
-				image = ImageIO.read(file);
-				BufferedImage expImage = grabSubImage(image, new Rectangle(750, 1000, 412, 26), 4);
-				String expBarHoverText = tess.doOCR(expImage).trim().replaceAll("\\s", "").replace(",", "");
-				String paragonLevel = expBarHoverText.split("(\\(|\\))")[1].intern();
-				 
-				String exps = expBarHoverText.split(":")[1];
-				
-				String currentExp = exps.split("/")[0];
-				String endExp = exps.split("/")[1];
-				RunEntry entry = new RunEntry(currentExp, endExp, endTime, paragonLevel);
-				entryList.add(entry);
-				System.out.println(entry.toString());
-				
-				if(prevExp.equals(currentExp)){
-					runCount++;
-				}
-				prevExp = currentExp;
-			}
-			catch (IOException e)
-			{	e.printStackTrace(); }
-			catch (TesseractException e)
-			{	e.printStackTrace(); }
-			
-		
-		//---------------------------------------------
-		/*
-		for(String filename : m_Model.getImageFilenames()){
-			try
-			{
-				File file = new File(m_Model.getPath(XPLoggerEvents.INPUT_BROWSE) + File.separator + filename);
-				DateTime endTime = new DateTime(file.lastModified());
-				
-				BufferedImage image = ImageIO.read(file);
-			
-				BufferedImage expImage = grabSubImage(image, new Rectangle(750, 1000, 412, 26), 4);
-				String expBarHoverText = tess.doOCR(expImage).trim().replaceAll("\\s", "").replace(",", "");
-				String paragonLevel = expBarHoverText.split("(\\(|\\))")[1].intern();
-				 
-				String exps = expBarHoverText.split(":")[1];
-				
-				String currentExp = exps.split("/")[0];
-				String endExp = exps.split("/")[1];
-				
-				
-				
-				
-				if(prevExpAmount.equals(currentExp)){
-					if(currentRun.size() == 0){
-						runCount++;
-						currentRun.add(new RunEntry(runCount, currentExp, endExp, endTime, paragonLevel));
-					}else{
-						currentRun.add(new RunEntry(runCount, currentExp, endExp, endTime, paragonLevel));
-						m_Model.addRun(currentRun);
-						currentRun = new Run();
-					}
-				}else{
-					
-					currentRun.add(new RunEntry(runCount, currentExp, endExp, endTime, paragonLevel));
-				}
-				prevExpAmount = currentExp;
-			}
-			catch (TesseractException e)
-			{	e.printStackTrace();	}
-			catch (IOException e)
-			{ 	e.printStackTrace();	}	
-		}
-		
-		Run currentRun = new Run();
-		int runCount = 0;
-		String prevExpAmount = "";
-		
-		if(currentRun.size() > 0){
-			m_Model.addRun(currentRun);
-		}
-		
-		//add column for checkbox
-		m_View.addTableColumn("",25);
-		
-		
-		for(ColumnNames column : ColumnNames.values()){
-			m_View.addTableColumn(column.toString());
-		}
-		
-		//add rows
-		Integer prevExp = -1;
-		DateTime prevTime = null;
-		
-		//organizes the runs by specific zone
-		final Map<String, ZoneData> zoneRuns = new LinkedHashMap<String, ZoneData>();
-		
-		//insert each of the runs
-		for(Run run : m_Model.getRunData()){
-			List<String> values = new ArrayList<String>();
-			//empty value for checkbox column
-			values.add("");
-			for(RunEntry entry : run){
-				
-				if(prevExp > 0){
-					values.add(Integer.toString(Integer.parseInt(entry.m_CurrentExp) - prevExp) + 
-							" : " + m_TimeFormat.print(new Period(prevTime, entry.m_Time)));
-					
-					//this lets us get the average values per zone
-					if(!zoneRuns.containsKey(entry.m_ZoneName)){
-						zoneRuns.put(entry.m_ZoneName, new ZoneData());
-					}
-					
-					zoneRuns.get(entry.m_ZoneName).add(new ZoneEntry(entry.m_ZoneName, 
-							new Period(prevTime, entry.m_Time), 
-							Integer.parseInt(entry.m_CurrentExp) - prevExp));
-				}
-				prevExp = Integer.parseInt(entry.m_CurrentExp);
-				prevTime = entry.m_Time;
-			}
-			values.add(m_TimeFormat.print(run.getDuration()));
-			values.add(Integer.toString(run.getStartingExp()));
-			values.add(Integer.toString(run.getEndingExp()));
-			values.add(Integer.toString(run.getEndingExp() - run.getStartingExp()));
-			
-			//get exp per hour, rounded 2 decimal places to millions
-			values.add(Float.toString(((float)Math.round(run.getExpPerHour() / 10000f)) / 100f));
-			
-			values.add(run.getStartingParagonLevel());
-			m_View.addTableItem(values.toArray(new String[0]));			
-		}
-		
-		List<String> values = new ArrayList<String>();
-		//empty value for checkbox column
-		values.add("");
-		int duration = 0;
-		int expGained = 0;
-		int totalSeconds = 0;
-		for(String zoneName : zoneRuns.keySet()){
-			ZoneData zone = zoneRuns.get(zoneName);
-			duration += zone.getTotalDurationInSeconds();
-			expGained += zone.getTotalExpGained();
-			values.add(Float.toString((float)Math.round(zone.getAverageExpPerHour() / 10000f) / 100f));
-		}
-		
-		values.add(m_TimeFormat.print(new Period((duration * 1000) )));
-		values.add(""); values.add("");
-		
-		int aveExpGained = Math.round((float)expGained / (float)runCount);
-		values.add(Integer.toString(aveExpGained));
-		values.add(Float.toString((float)Math.round(aveExpGained / duration * 3600 / 10000f)/100f));
-		
-		m_View.insertTableItem(values.toArray(new String[0]), 0);
-		
-		*/
-	}
-	
 	protected void handleEntry(final RunEntry p_Entry){
 
 		Run currentRun = m_Model.getCurrentRunData();
@@ -432,19 +289,22 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 			return;
 		}
 		
-		
 		if(lastEntry.m_CurrentExp.equals(p_Entry.m_CurrentExp)){
 			//start a new run
 			m_Model.addRun(currentRun);
 			currentRun = new Run();
 			m_Model.setCurrentRun(currentRun);
-			
+			currentRun.add(p_Entry);
+		}else{
+			//log the information for this zone (used to calculate averages
+			currentRun.add(p_Entry);
+			final int start = currentRun.size()-2;
+			ZoneEntry zoneEntry = new ZoneEntry(currentRun.getDuration(start, start+1), currentRun.getExpGained(start, start+1));
+			m_Model.addZoneData(currentRun.size()-1, zoneEntry);
 		}
 		
-		currentRun.add(p_Entry);
 		System.out.print(currentRun.toString() + "\n\n");
 		log.debug(currentRun.toString() + "\n\n");
-
 	}
 	
 	protected void updateTable(){
@@ -454,59 +314,105 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 			@Override
 			public Boolean call() throws Exception
 			{
-				m_View.clearTable();
-				
-				
-				int columnCount;
-				if(m_Model.getAllRunData().size() > 0){
-					columnCount = m_Model.getAllRunData().get(0).size()-1;
-				}else{
-					columnCount = m_Model.getCurrentRunData().size()-1;
-				}
-				
-				m_View.addTableColumn("Run");
-								
-				for(int i=0; i<columnCount; i++){
-					m_View.addTableColumn(Integer.toString(i+1));
-				}
-				
-				for(ColumnNames column : ColumnNames.values()){
-					m_View.addTableColumn(column.toString());
-				}
-				
-				if(columnCount == 0){
-					return true;
-				}
-				
-				int runCount = 1;
-				for(Run run : m_Model.getAllRunData()){
+				m_View.getShell().setRedraw(false);
+				try{
+					m_View.clearTable();
 					
-					List<String> tableValues = new ArrayList<String>(Arrays.asList(run.toFormattedString()));
-					tableValues.add(0,Integer.toString(runCount));
-					tableValues.add(m_TimeFormat.print(run.getTotalDuration()));
-					tableValues.add(Integer.toString(run.getTotalExpGained()));
-					tableValues.add(Float.toString((float)Math.round(run.getExpPerHour()/10000f)/100f));
-					tableValues.add(run.getStartingParagonLevel());
-					m_View.addTableItem(tableValues.toArray(new String[0]));
-					runCount++;
-				}
-				
-				if(m_Model.getCurrentRunData().size() > 0){
-					List<String> tableValues = new ArrayList<String>(Arrays.asList(m_Model.getCurrentRunData().toFormattedString()));
-					while(tableValues.size() < columnCount){
-						tableValues.add("");
+					
+					int columnCount = 0;
+					if(m_Model.getAllRunData().size() > 0){
+						for(Run run : m_Model.getAllRunData()){
+							columnCount = Math.max(run.size()-1, columnCount);
+						}
 					}
-					tableValues.add(0,Integer.toString(runCount));
-					tableValues.add(m_TimeFormat.print(m_Model.getCurrentRunData().getTotalDuration()));
-					tableValues.add(Integer.toString(m_Model.getCurrentRunData().getTotalExpGained()));
-					tableValues.add(Float.toString((float)Math.round(m_Model.getCurrentRunData().getExpPerHour()/10000f)/100f));
-					tableValues.add(m_Model.getCurrentRunData().getStartingParagonLevel());
-					m_View.addTableItem(tableValues.toArray(new String[0]));
+					
+					columnCount = Math.max(m_Model.getCurrentRunData().size()-1, columnCount);
+					
+					m_View.addTableColumn("Run");
+									
+					for(int i=0; i<columnCount; i++){
+						m_View.addTableColumn(Integer.toString(i+1));
+					}
+					
+					for(ColumnNames column : ColumnNames.values()){
+						m_View.addTableColumn(column.toString());
+					}
+					
+					if(columnCount == 0){
+						return true;
+					}
+					
+					int runCount = 1;
+					
+					//put into table data for all complete runs 
+					for(Run run : m_Model.getAllRunData()){						
+						List<String> tableValues = new ArrayList<String>(Arrays.asList(run.toFormattedString()));
+						while(tableValues.size() < columnCount){
+							tableValues.add("");
+						}
+						tableValues.add(0,Integer.toString(runCount));
+						tableValues.add(m_TimeFormat.print(run.getTotalDuration()));
+						tableValues.add(Float.toString(roundToMillions(run.getTotalExpGained())));
+						tableValues.add(Float.toString(roundToMillions(run.getExpPerHour())));
+						tableValues.add(run.getStartingParagonLevel() + " -> " + run.getEndingParagonLevel());
+						m_View.addTableItem(tableValues.toArray(new String[0]));
+						runCount++;
+					}
+					
+					//put into table data for current run
+					if(m_Model.getCurrentRunData().size() > 0){
+						List<String> tableValues = new ArrayList<String>(Arrays.asList(m_Model.getCurrentRunData().toFormattedString()));
+						while(tableValues.size() < columnCount){
+							tableValues.add("");
+						}
+						tableValues.add(0,Integer.toString(runCount));
+						tableValues.add(m_TimeFormat.print(m_Model.getCurrentRunData().getTotalDuration()));
+						tableValues.add(Float.toString(roundToMillions(m_Model.getCurrentRunData().getTotalExpGained())));
+						tableValues.add(Float.toString(roundToMillions(m_Model.getCurrentRunData().getExpPerHour())));
+						tableValues.add(m_Model.getCurrentRunData().getStartingParagonLevel() + " -> " + m_Model.getCurrentRunData().getEndingParagonLevel());
+						m_View.addTableItem(tableValues.toArray(new String[0]));
+					}
+					
+					//put into table average data (first row)
+					List<String> averageValues = new ArrayList<String>();
+					List<String> averageExpPerHourValues = new ArrayList<String>();
+					averageValues.add("Avg");
+					averageExpPerHourValues.add("Xp/Hr");
+					int totalExpAverage = 0;
+					Period totalPeriodAverage = new Period(0);
+					
+					for(int i=1; i<=columnCount; i++){
+						final ZoneData data = m_Model.getZoneData(i);
+						averageValues.add(data.getAverageExpGainedMillions() + " - " + Run.PERIOD_FORMAT.print(data.getAverageDuration()));
+						totalExpAverage += data.getAverageExpGained();
+						totalPeriodAverage = totalPeriodAverage.plus(data.getAverageDuration());
+						
+						averageExpPerHourValues.add(Float.toString(Math.round(data.getAverageExpGainedMillions() / Seconds.standardSecondsIn(data.getAverageDuration()).getSeconds() * 360000f)/100f));
+					}
+					
+					averageValues.add(m_TimeFormat.print(totalPeriodAverage.normalizedStandard()));
+					averageValues.add(Float.toString(roundToMillions(totalExpAverage)));
+					averageValues.add(Float.toString(roundToMillions(totalExpAverage/Seconds.standardSecondsIn(totalPeriodAverage).getSeconds() * 3600f)));
+
+					m_View.insertTableItem(averageValues.toArray(new String[0]), 0);
+					m_View.insertTableItem(averageExpPerHourValues.toArray(new String[0]), 1);
+					m_View.insertTableItem(new String[0], 2);
+					
+					return true;
+				}finally{
+					m_View.getShell().setRedraw(true);
 				}
-				return true;
 			}
 		
 		});
+	}
+	
+	protected float roundToMillions(final int p_Value){
+		return Math.round(p_Value / 10000f) /100f;
+	}
+	
+	protected float roundToMillions(final float p_Value){
+		return Math.round(p_Value / 10000f) /100f;
 	}
 	
 	protected BufferedImage grabSubImage(final BufferedImage p_Image, final Rectangle p_subImage, final float p_Scale){

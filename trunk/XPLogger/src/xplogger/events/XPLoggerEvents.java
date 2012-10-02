@@ -7,5 +7,8 @@ public enum XPLoggerEvents
 	STOP,
 	START,
 	CLEAR,
-	NEW_FILE
+	NEW_FILE, 
+	NEW_RUN,
+	MAKE_COPY,
+	CLOSE
 }

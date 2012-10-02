@@ -37,6 +37,10 @@ public class ZoneData extends ArrayList<ZoneEntry>
 		return getTotalExpGained() / size();
 	}
 	
+	public float getAverageExpGainedMillions(){
+		return Math.round(getTotalExpGained() / size()/10000f)/100f;
+	}
+	
 	public float getAverageExpPerHour(){
 		return (float)getAverageExpGained() / (float)Seconds.standardSecondsIn(getAverageDuration()).getSeconds() * 3600;
 	}
