@@ -12,8 +12,6 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Event;
-import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 import xplogger.events.XPLoggerEvents;
@@ -21,6 +19,8 @@ import org.eclipse.swt.widgets.Table;
 
 public class XPLoggerView extends AbstractViewPart implements IXPLoggerView, SelectionListener
 {
+	public XPLoggerView() {
+	}
 	public static String ID = "xplogger.views.xploggerview";
 	
 	private Text m_TextDir;
@@ -34,7 +34,7 @@ public class XPLoggerView extends AbstractViewPart implements IXPLoggerView, Sel
 
 	private Button	m_ButtonStop;
 	private Button m_ButtonNewRun;
-	private Button m_ButtonMakeCopy;
+	private Button m_ButtonScanDirectory;
 	
 
 	@Override
@@ -97,15 +97,14 @@ public class XPLoggerView extends AbstractViewPart implements IXPLoggerView, Sel
 		m_ButtonClear.setData(XPLoggerEvents.CLEAR);
 		m_ButtonClear.addSelectionListener(this);
 
-		m_ButtonMakeCopy = new Button(parent, SWT.NONE);
-		GridData gd_m_ButtonMakeCopy = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1);
-		gd_m_ButtonMakeCopy.widthHint = 80;
-		m_ButtonMakeCopy.setLayoutData(gd_m_ButtonMakeCopy);
-		m_ButtonMakeCopy.setText("Make Copy");
-		m_ButtonMakeCopy.addSelectionListener(this);
-		m_ButtonMakeCopy.setData(XPLoggerEvents.MAKE_COPY);
-		m_ButtonMakeCopy.setVisible(false);
-		m_ButtonMakeCopy.setEnabled(false);
+		m_ButtonScanDirectory = new Button(parent, SWT.NONE);
+		GridData gd_m_ButtonScanDirectory = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1);
+		gd_m_ButtonScanDirectory.widthHint = 80;
+		m_ButtonScanDirectory.setLayoutData(gd_m_ButtonScanDirectory);
+		m_ButtonScanDirectory.setText("Scan Existing");
+		m_ButtonScanDirectory.addSelectionListener(this);
+		m_ButtonScanDirectory.setData(XPLoggerEvents.SCAN);
+		m_ButtonScanDirectory.setEnabled(false);
 		
 		Label label = new Label(parent, SWT.SEPARATOR | SWT.HORIZONTAL);
 		GridData gd_label = new GridData(SWT.FILL, SWT.CENTER, true, false, 3, 1);
@@ -151,8 +150,8 @@ public class XPLoggerView extends AbstractViewPart implements IXPLoggerView, Sel
 			case NEW_RUN:
 				m_ButtonNewRun.setEnabled(p_Enabled);
 				break;
-			case MAKE_COPY:
-				m_ButtonMakeCopy.setEnabled(p_Enabled);
+			case SCAN:
+				m_ButtonScanDirectory.setEnabled(p_Enabled);
 				break;
 		}
 	}
