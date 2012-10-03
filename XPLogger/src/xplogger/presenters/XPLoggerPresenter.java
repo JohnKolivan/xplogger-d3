@@ -19,6 +19,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,8 +30,11 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.jface.operation.IRunnableWithProgress;
+
 import static java.nio.file.StandardWatchEventKinds.*;
 
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardWatchEventKinds;
@@ -49,6 +53,8 @@ import org.joda.time.Period;
 import org.joda.time.Seconds;
 import org.joda.time.format.PeriodFormatter;
 import org.joda.time.format.PeriodFormatterBuilder;
+
+import com.google.common.base.Function;
 
 import xplogger.events.XPLoggerEvents;
 import xplogger.models.IXPLoggerModel;
@@ -82,6 +88,7 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 			m_Model.setPath(XPLoggerEvents.INPUT_BROWSE, path);
 			m_View.setPath(XPLoggerEvents.INPUT_BROWSE, path);
 			m_View.setWidgetEnabled(XPLoggerEvents.START, m_Model.getPath(XPLoggerEvents.INPUT_BROWSE) != null && !FILE_WATCHER_IS_RUNNING);
+			m_View.setWidgetEnabled(XPLoggerEvents.SCAN, m_Model.getPath(XPLoggerEvents.INPUT_BROWSE) != null);
 		}
 	}
 
@@ -167,7 +174,10 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 				m_View.clearTable();
 				
 				break;
-			case MAKE_COPY:
+			case SCAN:
+				m_Model.clearAllData();
+				m_View.clearTable();
+				runScanJob();
 				
 				break;
 		}
@@ -180,7 +190,7 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 				m_View.setWidgetEnabled(XPLoggerEvents.START, m_Model.getPath(XPLoggerEvents.INPUT_BROWSE) != null && !FILE_WATCHER_IS_RUNNING);
 				m_View.setWidgetEnabled(XPLoggerEvents.STOP, m_Model.getPath(XPLoggerEvents.INPUT_BROWSE) != null && FILE_WATCHER_IS_RUNNING);
 				m_View.setWidgetEnabled(XPLoggerEvents.NEW_RUN, m_Model.getCurrentRunData().size() > 0);
-				//m_View.setWidgetEnabled(XPLoggerEvents.MAKE_COPY, m_Model.getAllRunData().size() > 0 || m_Model.getCurrentRunData().size() > 0);
+				m_View.setWidgetEnabled(XPLoggerEvents.SCAN, m_Model.getPath(XPLoggerEvents.INPUT_BROWSE) != null);
 				return true;
 			}
 		});
@@ -239,7 +249,48 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 		};
 		m_WatcherJob.schedule();
 	}
-	
+
+
+	protected void runScanJob(){
+		IRunnableWithProgress runnable = new IRunnableWithProgress(){
+
+			@Override
+			public void run(IProgressMonitor p_Monitor)
+					throws InvocationTargetException, InterruptedException
+			{
+				Path myDir = Paths.get(m_Model.getPath(XPLoggerEvents.INPUT_BROWSE));
+
+				if(myDir.getFileName().toString().length() == 0 || !myDir.toFile().isDirectory()){
+					return;
+				}
+				
+				final FilenameFilter filter = new FilenameFilter(){
+					@Override
+					public boolean accept(final File p_File, final String p_Extension)
+					{
+						return p_Extension.endsWith(".jpg");
+					}
+				};
+				
+				p_Monitor.beginTask("Scanning images", myDir.toFile().listFiles(filter).length);
+				
+				for(String filename : myDir.toFile().list(filter)){
+					p_Monitor.worked(1);
+					RunEntry entry = processImage(filename);
+					
+					if(entry != null){
+						handleEntry(entry);
+					}
+					
+					updateTable();
+				}
+				
+				
+			}
+		};
+
+		m_View.runInAsyncUIThreadWithProgress(runnable);
+	}
 	
 	
 	protected RunEntry processImage(final String p_Filename){
@@ -265,7 +316,7 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 			String currentExp = exps.split("/")[0];
 			String endExp = exps.split("/")[1];
 
-			RunEntry entry = new RunEntry(currentExp, endExp, endTime, paragonLevel);
+			RunEntry entry = new RunEntry(currentExp, endExp, endTime, paragonLevel, p_Filename);
 			log.debug(entry.toString());
 			
 			return entry;
@@ -285,25 +336,24 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 		//handle first run
 		if(lastEntry == null){
 			currentRun.add(p_Entry);
-			System.out.print(currentRun.toString() + "\n\n");
+			log.debug(currentRun.toString() + "\n\n");
 			return;
 		}
 		
-		if(lastEntry.m_CurrentExp.equals(p_Entry.m_CurrentExp)){
+		if(lastEntry.m_CurrentExp.equals(p_Entry.m_CurrentExp)  || (m_Model.getAllRunData().size() > 0 && currentRun.size() == m_Model.getAllRunData().get(0).size())){
 			//start a new run
 			m_Model.addRun(currentRun);
 			currentRun = new Run();
 			m_Model.setCurrentRun(currentRun);
 			currentRun.add(p_Entry);
 		}else{
-			//log the information for this zone (used to calculate averages
+			//log the information for this zone (used to calculate column averages)
 			currentRun.add(p_Entry);
 			final int start = currentRun.size()-2;
 			ZoneEntry zoneEntry = new ZoneEntry(currentRun.getDuration(start, start+1), currentRun.getExpGained(start, start+1));
 			m_Model.addZoneData(currentRun.size()-1, zoneEntry);
 		}
 		
-		System.out.print(currentRun.toString() + "\n\n");
 		log.debug(currentRun.toString() + "\n\n");
 	}
 	
@@ -321,14 +371,12 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 					
 					int columnCount = 0;
 					if(m_Model.getAllRunData().size() > 0){
-						for(Run run : m_Model.getAllRunData()){
-							columnCount = Math.max(run.size()-1, columnCount);
-						}
+						 columnCount = m_Model.getAllRunData().get(0).size()-1;
+					}else{
+						 columnCount = m_Model.getCurrentRunData().size()-1;
 					}
 					
-					columnCount = Math.max(m_Model.getCurrentRunData().size()-1, columnCount);
-					
-					m_View.addTableColumn("Run");
+					m_View.addTableColumn("");
 									
 					for(int i=0; i<columnCount; i++){
 						m_View.addTableColumn(Integer.toString(i+1));
@@ -355,6 +403,7 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 						tableValues.add(Float.toString(roundToMillions(run.getTotalExpGained())));
 						tableValues.add(Float.toString(roundToMillions(run.getExpPerHour())));
 						tableValues.add(run.getStartingParagonLevel() + " -> " + run.getEndingParagonLevel());
+						tableValues.add(run.getFilenames());
 						m_View.addTableItem(tableValues.toArray(new String[0]));
 						runCount++;
 					}
@@ -370,6 +419,7 @@ public class XPLoggerPresenter extends AbstractPresenter<IXPLoggerModel, IXPLogg
 						tableValues.add(Float.toString(roundToMillions(m_Model.getCurrentRunData().getTotalExpGained())));
 						tableValues.add(Float.toString(roundToMillions(m_Model.getCurrentRunData().getExpPerHour())));
 						tableValues.add(m_Model.getCurrentRunData().getStartingParagonLevel() + " -> " + m_Model.getCurrentRunData().getEndingParagonLevel());
+						tableValues.add(m_Model.getCurrentRunData().getFilenames());
 						m_View.addTableItem(tableValues.toArray(new String[0]));
 					}
 					

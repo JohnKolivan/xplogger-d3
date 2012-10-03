@@ -5,7 +5,8 @@ public enum ColumnNames
 	RunTime("Run Time"),
 	EarnedExp("Earned Exp"),
 	ExpPerHour("Exp / Hour"),
-	ParagonLevel("Paragon Level");
+	ParagonLevel("Paragon Level"),
+	FileNames("Image Files Included");
 	
 	private String m_DisplayName;
 	

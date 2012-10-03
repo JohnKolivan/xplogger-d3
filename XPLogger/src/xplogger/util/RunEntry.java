@@ -14,14 +14,16 @@ public class RunEntry
 	public String m_CurrentExp;
 	public String m_MaxExp;
 	public String m_ParagonLevel;
+	public String m_Filename;
 	
-	public RunEntry( String m_CurrentExp, String m_MaxExp, DateTime m_Time, String m_ParagonLevel)
+	public RunEntry( String p_CurrentExp, String p_MaxExp, DateTime p_Time, String p_ParagonLevel, String p_Filename)
 	{
 		super();
-		this.m_CurrentExp = m_CurrentExp;
-		this.m_MaxExp = m_MaxExp;
-		this.m_Time = m_Time;
-		this.m_ParagonLevel = m_ParagonLevel;
+		m_CurrentExp = p_CurrentExp;
+		m_MaxExp = p_MaxExp;
+		m_Time = p_Time;
+		m_ParagonLevel = p_ParagonLevel;
+		m_Filename = p_Filename;
 	}
 	
 	@Override

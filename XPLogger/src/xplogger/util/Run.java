@@ -130,5 +130,15 @@ public class Run extends ArrayList<RunEntry>{
 		return returnValue;
 	}
 	
+	public String getFilenames(){
+		String returnString = "";
+		
+		for(RunEntry entry : this){
+			returnString += entry.m_Filename + ", ";
+		}
+		
+		return returnString;
+	}
+	
 	
 }
