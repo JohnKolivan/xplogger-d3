@@ -11,31 +11,39 @@ import org.eclipse.ui.application.WorkbenchWindowAdvisor;
 import xplogger.manager.XPLoggerHandler;
 import xplogger.manager.XPLoggerStartupManager;
 
-public class ApplicationWorkbenchWindowAdvisor extends WorkbenchWindowAdvisor {
+public class ApplicationWorkbenchWindowAdvisor extends WorkbenchWindowAdvisor
+{
 
-	XPLoggerStartupManager m_Manager = null;
-	
-    public ApplicationWorkbenchWindowAdvisor(final IWorkbenchWindowConfigurer configurer) {
-        super(configurer);
-    }
+	XPLoggerStartupManager	m_Manager	= null;
 
-    public ActionBarAdvisor createActionBarAdvisor(final IActionBarConfigurer configurer) {
-        return new ApplicationActionBarAdvisor(configurer);
-    }
-    
-    @Override
-    public void postWindowOpen(){
-    	m_Manager.postStartup();
-    }
-    
-    public void preWindowOpen() {
-    	
-    	try
+	public ApplicationWorkbenchWindowAdvisor(
+			final IWorkbenchWindowConfigurer configurer)
+	{
+		super(configurer);
+	}
+
+	@Override
+	public ActionBarAdvisor createActionBarAdvisor(
+			final IActionBarConfigurer configurer)
+	{
+		return new ApplicationActionBarAdvisor(configurer);
+	}
+
+	@Override
+	public void postWindowOpen()
+	{
+		m_Manager.postStartup();
+	}
+
+	@Override
+	public void preWindowOpen()
+	{
+
+		try
 		{
 			m_Manager = ManagerHandlerFactory
-					.create(XPLoggerHandler.class,
-							XPLoggerStartupManager.class).createHandler()
-					.getManager();
+					.create(XPLoggerHandler.class, XPLoggerStartupManager.class)
+					.createHandler().getManager();
 			m_Manager.setWorkbenchWindowConfigurer(getWindowConfigurer());
 		}
 		catch (final InstantiationException p_Exception)
@@ -48,5 +56,5 @@ public class ApplicationWorkbenchWindowAdvisor extends WorkbenchWindowAdvisor {
 			Logger.getLogger(ApplicationWorkbenchWindowAdvisor.class).error(
 					p_Exception);
 		}
-    }
+	}
 }

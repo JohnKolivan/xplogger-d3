@@ -1,38 +1,37 @@
 package xplogger.models;
 
-import java.util.List;
+import gov.usgs.nwrc.internal.model.interfaces.IModel;
 
-import org.joda.time.DateTime;
+import java.util.List;
 
 import xplogger.events.XPLoggerEvents;
 import xplogger.util.Run;
 import xplogger.util.RunEntry;
 import xplogger.util.ZoneData;
 import xplogger.util.ZoneEntry;
-import gov.usgs.nwrc.internal.model.interfaces.IModel;
 
 public interface IXPLoggerModel extends IModel
 {
 
-	void setPath(final XPLoggerEvents p_Event, final String p_Path);
+	void addRun(final Run p_Run);
 
-	String getPath(final XPLoggerEvents p_Event);
+	void addRunEntry(final RunEntry p_Entry);
 
-	void setImageFilenames(final List<String> m_ImageFilenames);
+	void addZoneData(final int p_ZoneIndex, final ZoneEntry p_Data);
 
 	void clearAllData();
-
-	void addRun(final Run p_Run);
 
 	List<Run> getAllRunData();
 
 	Run getCurrentRunData();
 
-	void addRunEntry(final RunEntry p_Entry);
+	String getPath(final XPLoggerEvents p_Event);
+
+	ZoneData getZoneData(final int p_Index);
 
 	void setCurrentRun(final Run p_Run);
 
-	void addZoneData(final int p_ZoneIndex, final ZoneEntry p_Data);
+	void setImageFilenames(final List<String> m_ImageFilenames);
 
-	ZoneData getZoneData(final int p_Index);
+	void setPath(final XPLoggerEvents p_Event, final String p_Path);
 }
