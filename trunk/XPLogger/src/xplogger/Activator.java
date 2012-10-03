@@ -1,7 +1,17 @@
 package xplogger;
 
+
+import java.net.URL;
+
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+import org.eclipse.core.runtime.FileLocator;
+import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
+import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 
 /**
@@ -19,6 +29,25 @@ public class Activator extends AbstractUIPlugin {
 	 * The constructor
 	 */
 	public Activator() {
+		/**
+		 * Get the path to the log4j properties file.
+		 */
+		final Bundle bundle = Platform.getBundle(Activator.PLUGIN_ID);
+		final URL url = FileLocator.find(bundle, new Path("/log4j.properties"),
+				null);
+		if (url != null)
+		{
+			PropertyConfigurator.configure(url);
+			Logger.getRootLogger().info(
+					"Starting with custom log4j properties.");
+		}
+		else
+		{
+			BasicConfigurator.configure();
+			Logger.getRootLogger()
+					.info("Starting with basic log4j properties.");
+		}
+
 	}
 
 	/*
