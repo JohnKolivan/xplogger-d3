@@ -5,8 +5,8 @@ import gov.usgs.nwrc.internal.manager.ManagerHandler;
 public class XPLoggerHandler implements ManagerHandler<XPLoggerStartupManager>
 {
 
-	protected static XPLoggerStartupManager MANAGER = null;
-	
+	protected static XPLoggerStartupManager	MANAGER	= null;
+
 	@Override
 	public XPLoggerStartupManager getManager()
 	{
@@ -16,7 +16,8 @@ public class XPLoggerHandler implements ManagerHandler<XPLoggerStartupManager>
 	@Override
 	public void setManager(final XPLoggerStartupManager p_Manager)
 	{
-		if(MANAGER == null){
+		if (MANAGER == null)
+		{
 			MANAGER = p_Manager;
 		}
 	}
