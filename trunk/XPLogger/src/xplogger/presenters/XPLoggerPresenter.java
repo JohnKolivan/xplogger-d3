@@ -50,6 +50,7 @@ import org.joda.time.format.PeriodFormatterBuilder;
 import xplogger.events.XPLoggerEvents;
 import xplogger.models.IXPLoggerModel;
 import xplogger.util.ColumnNames;
+import xplogger.util.ResolutionNotSupportedException;
 import xplogger.util.Run;
 import xplogger.util.RunEntry;
 import xplogger.util.ZoneData;
@@ -267,9 +268,11 @@ public class XPLoggerPresenter extends
 		}
 		else
 		{
+			//add the entry to this run
+			currentRun.add(p_Entry);
+			
 			// log the information for this zone (used to calculate column
 			// averages)
-			currentRun.add(p_Entry);
 			final int start = currentRun.size() - 2;
 			final ZoneEntry zoneEntry = new ZoneEntry(currentRun.getDuration(
 					start, start + 1),
@@ -292,12 +295,14 @@ public class XPLoggerPresenter extends
 					m_Model.getPath(XPLoggerEvents.INPUT_BROWSE)
 							+ File.separator + p_Filename);
 			final DateTime endTime = new DateTime(file.lastModified());
-			final BufferedImage expImage = grabSubImage(ImageIO.read(file),
-					new Rectangle(745, 995, 425, 30), 4); // (745,995)->
+			final BufferedImage fullImage = ImageIO.read(file);
+			final BufferedImage expImage = grabSubImage(fullImage,
+					getExpLocation(fullImage), 4); // (745,995)->
 															// (1170,1025)
 
+			
 			final String expBarHoverText = tess.doOCR(expImage).trim()
-					.replaceAll("\\s", "").replace(",", "");
+					.replaceAll("\\s", "").replace(",", "").replace(".","");
 			final String paragonLevel = expBarHoverText.split("(\\(|\\))")[1]
 					.intern();
 
@@ -318,13 +323,35 @@ public class XPLoggerPresenter extends
 			return entry;
 
 		}
+		catch(final ResolutionNotSupportedException p_Exception){
+
+			m_View.runInAsyncUIThread(new Callable<Boolean>()
+			{
+				@Override
+				public Boolean call() throws Exception
+				{
+					m_View.showErrorDialog(p_Exception.getMessage());
+					return true;
+				}
+			});
+		}
 		catch (final Exception p_Exception)
 		{
-			log.debug(p_Exception.getStackTrace().toString(),
-					p_Exception.getCause());
+			log.error(p_Exception.getMessage());
 		}
 
 		return null;
+	}
+	
+	protected Rectangle getExpLocation(final BufferedImage p_Image) throws ResolutionNotSupportedException{
+		
+		if(p_Image.getWidth() == 1920 && p_Image.getHeight() == 1200){
+			return new Rectangle(745, 995, 425, 30);	
+		}else if(p_Image.getWidth() == 1920 && p_Image.getHeight() == 1080){
+			return new Rectangle(771, 899, 379, 22);
+		}
+		
+		throw new ResolutionNotSupportedException("Sorry, this image resolution is not supported: \n(" + p_Image.getWidth() + " x " + p_Image.getHeight() + ")");	
 	}
 
 	@Override
@@ -529,6 +556,11 @@ public class XPLoggerPresenter extends
 						columnCount = m_Model.getCurrentRunData().size() - 1;
 					}
 
+					if (columnCount <= 0)
+					{
+						return true;
+					}
+					
 					m_View.addTableColumn("");
 
 					for (int i = 0; i < columnCount; i++)
@@ -541,10 +573,7 @@ public class XPLoggerPresenter extends
 						m_View.addTableColumn(column.toString());
 					}
 
-					if (columnCount == 0)
-					{
-						return true;
-					}
+					
 
 					int runCount = 1;
 
