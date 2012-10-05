@@ -35,6 +35,8 @@ public class XPLoggerView extends AbstractViewPart implements IXPLoggerView,
 	private Button			m_ButtonNewRun;
 	private Button			m_ButtonScanDirectory;
 
+	private Button 			m_ButtonLetterbox;
+
 	public XPLoggerView()
 	{
 	}
@@ -103,7 +105,14 @@ public class XPLoggerView extends AbstractViewPart implements IXPLoggerView,
 		m_ButtonDirBrowse.setText("Browse...");
 		m_ButtonDirBrowse.setData(XPLoggerEvents.INPUT_BROWSE);
 		m_ButtonDirBrowse.addSelectionListener(this);
-		new Label(parent, SWT.NONE);
+		
+		Composite composite_1 = new Composite(parent, SWT.NONE);
+		composite_1.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1));
+		composite_1.setLayout(new GridLayout(1, false));
+		m_ButtonLetterbox = new Button(composite_1, SWT.CHECK);
+		m_ButtonLetterbox.setText("Letterboxing");
+		m_ButtonLetterbox.addSelectionListener(this);
+		m_ButtonLetterbox.setData(XPLoggerEvents.LETTERBOX);
 
 		composite = new Composite(parent, SWT.NONE);
 		composite.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
@@ -242,6 +251,17 @@ public class XPLoggerView extends AbstractViewPart implements IXPLoggerView,
 	{
 		final XPLoggerEvents event = XPLoggerEvents.valueOf(p_Event.widget
 				.getData().toString());
-		firePropertyChange(event.toString());
+		
+		switch (event){
+			case LETTERBOX:
+				boolean value = ((Button) p_Event.widget).getSelection();
+				firePropertyChange(event.toString(), !value, value);
+				break;
+			default:
+				firePropertyChange(event.toString());
+				break;
+					
+		}
+		
 	}
 }

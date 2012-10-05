@@ -20,7 +20,18 @@ public class XPLoggerModel extends AbstractModel implements IXPLoggerModel
 	List<ZoneData>	m_ZoneData			= new ArrayList<ZoneData>();
 
 	List<Run>		m_Runs				= new ArrayList<Run>();
+	boolean			m_Letterboxing		= false;
 
+	@Override
+	public boolean getLetterboxing(){
+		return m_Letterboxing;
+	}
+	
+	@Override
+	public void setLetterboxing(final boolean p_Enabled){
+		m_Letterboxing = p_Enabled;
+	}
+	
 	@Override
 	public void addRun(final Run p_Run)
 	{

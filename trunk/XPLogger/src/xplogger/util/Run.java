@@ -196,4 +196,9 @@ public class Run extends ArrayList<RunEntry>
 		return returnValue;
 	}
 
+	public int getExpTilLevel(){
+		return Integer.parseInt(getLast().m_MaxExp) - Integer.parseInt(getLast().m_CurrentExp);
+	}
+	
+	
 }

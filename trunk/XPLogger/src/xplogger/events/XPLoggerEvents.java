@@ -11,5 +11,6 @@ public enum XPLoggerEvents
 	NEW_RUN,
 	MAKE_COPY,
 	CLOSE,
-	SCAN
+	SCAN, 
+	LETTERBOX
 }
