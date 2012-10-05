@@ -42,6 +42,8 @@ import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.swt.SWT;
 import org.joda.time.DateTime;
+import org.joda.time.Duration;
+import org.joda.time.Hours;
 import org.joda.time.Period;
 import org.joda.time.Seconds;
 import org.joda.time.format.PeriodFormatter;
@@ -227,24 +229,26 @@ public class XPLoggerPresenter extends
 		final Graphics g2 = finalImage.createGraphics();
 		g2.drawImage(filteredImage, 0, 0, null);
 		g2.dispose();
-		// try
-		// {
-		//
-		// ImageIO.write(finalImage, "png", new
-		// File("C:\\Users\\primeauxb\\Documents\\pics\\" +
-		// Integer.toString((int)(Math.random() * Integer.MAX_VALUE))+".png"));
-		// }
-		// catch (IOException e)
-		// {
-		// // TODO Auto-generated catch block
-		// e.printStackTrace();
-		// }
+
+		/*
+		//outputs the subimage grabbed
+		try
+		 {
+			 ImageIO.write(finalImage, "png", new
+			 File("C:\\Users\\primeauxb\\Documents\\pics\\" +
+			 Integer.toString((int)(Math.random() * Integer.MAX_VALUE))+".png"));
+		 }
+		 catch (IOException e)
+		 {
+		 	e.printStackTrace();
+		 }
+		 */
+			
 		return finalImage;
 	}
 
 	protected void handleEntry(final RunEntry p_Entry)
 	{
-
 		Run currentRun = m_Model.getCurrentRunData();
 		final RunEntry lastEntry = currentRun.getLast();
 
@@ -295,11 +299,20 @@ public class XPLoggerPresenter extends
 					m_Model.getPath(XPLoggerEvents.INPUT_BROWSE)
 							+ File.separator + p_Filename);
 			final DateTime endTime = new DateTime(file.lastModified());
-			final BufferedImage fullImage = ImageIO.read(file);
+			BufferedImage fullImage = ImageIO.read(file);
+		
+			if(m_Model.getLetterboxing()){
+				int newHeight = Math.round((float)fullImage.getWidth() / 1.7777777f);
+				int barSize = (fullImage.getHeight() - newHeight) / 2;
+				fullImage = grabSubImage(fullImage, new Rectangle(0, barSize, fullImage.getWidth(), newHeight), 1f);
+			}
+			
+			if(fullImage.getHeight() < 800){
+				throw new ResolutionNotSupportedException("The vertical pixel count is too low. Please use screenshots with a vertical pixel count of no less than 800.\nLetterboxing may give the same results.");
+			}
+			
 			final BufferedImage expImage = grabSubImage(fullImage,
-					getExpLocation(fullImage), 4); // (745,995)->
-															// (1170,1025)
-
+					getExpLocation(fullImage), 7); 
 			
 			final String expBarHoverText = tess.doOCR(expImage).trim()
 					.replaceAll("\\s", "").replace(",", "").replace(".","");
@@ -344,11 +357,37 @@ public class XPLoggerPresenter extends
 	}
 	
 	protected Rectangle getExpLocation(final BufferedImage p_Image) throws ResolutionNotSupportedException{
+		int x=0, y=0, width=0, height=0;
+
+		float ratio = (float)p_Image.getWidth() / (float)p_Image.getHeight();
 		
-		if(p_Image.getWidth() == 1920 && p_Image.getHeight() == 1200){
-			return new Rectangle(745, 995, 425, 30);	
-		}else if(p_Image.getWidth() == 1920 && p_Image.getHeight() == 1080){
-			return new Rectangle(771, 899, 379, 22);
+		if( Math.abs(ratio - 1.6f) < 0.05f ){
+			//16:10 aspect ratio
+			x = Math.round((float)p_Image.getWidth() * 0.388f);
+			y = Math.round((float)p_Image.getHeight() * 0.825f);
+			width = Math.round((float)p_Image.getWidth() * 0.6093f) - x;
+			height = Math.round((float)p_Image.getHeight() * 0.8495f) - y;
+		}else if(Math.abs(ratio - 1.77f) < 0.05f){
+			//16:9 aspect ratio
+			x = Math.round((float)p_Image.getWidth() * 0.399f);
+			y = Math.round((float)p_Image.getHeight() * 0.825f);
+			width = Math.round((float)p_Image.getWidth() * 0.5995f) - x;
+			height = Math.round((float)p_Image.getHeight() * 0.8485f) - y;
+		}else if(Math.abs(ratio - 1.33) < 0.05f){
+			//4:3 aspect ratio
+			x = Math.round((float)p_Image.getWidth() * 0.3675f);
+			y = Math.round((float)p_Image.getHeight() * 0.8333f);
+			width = Math.round((float)p_Image.getWidth() * 0.6331f) - x;
+			height = Math.round((float)p_Image.getHeight() * 0.85f) - y;
+		}else if(Math.abs(ratio - 1.25) < 0.05f){
+			//5:4 aspect ratio
+			x = Math.round((float)p_Image.getWidth() * 0.3539f);
+			y = Math.round((float)p_Image.getHeight() * 0.8301f);
+			width = Math.round((float)p_Image.getWidth() * 0.6445f) - x;
+			height = Math.round((float)p_Image.getHeight() * 0.8544f) - y;
+		}
+		if(x != 0){
+			return new Rectangle(x, y, width, height);
 		}
 		
 		throw new ResolutionNotSupportedException("Sorry, this image resolution is not supported: \n(" + p_Image.getWidth() + " x " + p_Image.getHeight() + ")");	
@@ -362,11 +401,9 @@ public class XPLoggerPresenter extends
 
 		switch (event)
 		{
-			case CLOSE:
-				if (FILE_WATCHER_IS_RUNNING)
-				{
-					m_WatcherJob.getThread().interrupt();
-				}
+			case LETTERBOX:
+				m_Model.setLetterboxing((boolean)p_Event.getNewValue());
+				break;
 			case INPUT_BROWSE:
 				if (m_Model.getPath(event).length() > 0)
 				{
@@ -593,6 +630,7 @@ public class XPLoggerPresenter extends
 								.getTotalExpGained())));
 						tableValues.add(Float.toString(roundToMillions(run
 								.getExpPerHour())));
+						
 						tableValues.add(run.getStartingParagonLevel() + " -> "
 								+ run.getEndingParagonLevel());
 						tableValues.add(run.getFilenames());
@@ -615,8 +653,11 @@ public class XPLoggerPresenter extends
 								.getCurrentRunData().getTotalDuration()));
 						tableValues.add(Float.toString(roundToMillions(m_Model
 								.getCurrentRunData().getTotalExpGained())));
+						
+						
 						tableValues.add(Float.toString(roundToMillions(m_Model
 								.getCurrentRunData().getExpPerHour())));
+						
 						tableValues.add(m_Model.getCurrentRunData()
 								.getStartingParagonLevel()
 								+ " -> "
@@ -627,7 +668,7 @@ public class XPLoggerPresenter extends
 						m_View.addTableItem(tableValues.toArray(new String[0]));
 					}
 
-					// put into table average data (first row)
+					// put into table average data (first rows)
 					final List<String> averageValues = new ArrayList<String>();
 					final List<String> averageExpPerHourValues = new ArrayList<String>();
 					averageValues.add("Avg");
@@ -646,6 +687,7 @@ public class XPLoggerPresenter extends
 						totalPeriodAverage = totalPeriodAverage.plus(data
 								.getAverageDuration());
 
+						
 						averageExpPerHourValues.add(Float.toString(Math
 								.round(data.getAverageExpGainedMillions()
 										/ Seconds.standardSecondsIn(
@@ -657,16 +699,26 @@ public class XPLoggerPresenter extends
 							.normalizedStandard()));
 					averageValues.add(Float
 							.toString(roundToMillions(totalExpAverage)));
+					
+					float xpPerHour = roundToMillions(totalExpAverage
+							/ Seconds.standardSecondsIn(
+									totalPeriodAverage).getSeconds()
+							* 3600f);
 					averageValues.add(Float
-							.toString(roundToMillions(totalExpAverage
-									/ Seconds.standardSecondsIn(
-											totalPeriodAverage).getSeconds()
-									* 3600f)));
+							.toString(xpPerHour));
+					
+					float exptolevel = roundToMillions(m_Model.getCurrentRunData().getExpTilLevel());
+					float milliseconds = (exptolevel / xpPerHour) * 3600 * 1000;
+					Period timeToLevel = new Period((long)milliseconds);
+					averageValues.add(m_TimeFormat.print(timeToLevel));
 
+					
+					
 					m_View.insertTableItem(
 							averageValues.toArray(new String[0]), 0);
 					m_View.insertTableItem(
 							averageExpPerHourValues.toArray(new String[0]), 1);
+					
 					m_View.insertTableItem(new String[0], 2);
 
 					return true;

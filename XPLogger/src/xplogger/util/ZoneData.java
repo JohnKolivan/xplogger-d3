@@ -15,8 +15,9 @@ public class ZoneData extends ArrayList<ZoneEntry>
 	public Period getAverageDuration()
 	{
 		final Period totalDur = getTotalDuration();
-		return new Period(Seconds.standardSecondsIn(totalDur).getSeconds()
-				/ size() * 1000);
+		
+		return new Period(((Seconds.standardSecondsIn(totalDur).getSeconds() * 1000) + totalDur.getMillis()) 
+				/ size());
 	}
 
 	public int getAverageExpGained()
@@ -38,15 +39,15 @@ public class ZoneData extends ArrayList<ZoneEntry>
 
 	public Period getTotalDuration()
 	{
-		return new Period(getTotalDurationInSeconds() * 1000);
+		return new Period(getTotalDurationInMilliseconds());
 	}
 
-	public int getTotalDurationInSeconds()
+	public int getTotalDurationInMilliseconds()
 	{
 		int sum = 0;
 		for (final ZoneEntry entry : this)
 		{
-			sum += Seconds.standardSecondsIn(entry.m_Duration).getSeconds();
+			sum += (Seconds.standardSecondsIn(entry.m_Duration).getSeconds() * 1000) + entry.m_Duration.getMillis();
 		}
 		return sum;
 	}

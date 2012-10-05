@@ -12,7 +12,6 @@ import xplogger.util.ZoneEntry;
 
 public interface IXPLoggerModel extends IModel
 {
-
 	void addRun(final Run p_Run);
 
 	void addRunEntry(final RunEntry p_Entry);
@@ -34,4 +33,8 @@ public interface IXPLoggerModel extends IModel
 	void setImageFilenames(final List<String> m_ImageFilenames);
 
 	void setPath(final XPLoggerEvents p_Event, final String p_Path);
+
+	boolean getLetterboxing();
+
+	void setLetterboxing(final boolean p_Enabled);
 }
