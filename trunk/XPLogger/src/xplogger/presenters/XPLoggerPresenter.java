@@ -402,7 +402,8 @@ public class XPLoggerPresenter extends
 		switch (event)
 		{
 			case LETTERBOX:
-				m_Model.setLetterboxing((boolean)p_Event.getNewValue());
+				boolean newValue = (Boolean)p_Event.getNewValue();
+				m_Model.setLetterboxing(newValue);
 				break;
 			case INPUT_BROWSE:
 				if (m_Model.getPath(event).length() > 0)
@@ -420,7 +421,7 @@ public class XPLoggerPresenter extends
 
 				if (directory == null)
 				{
-					return;
+					break;
 				}
 
 				setLastFilterPath(directory);
@@ -488,14 +489,15 @@ public class XPLoggerPresenter extends
 				break;
 		}
 
+		//update the gui buttons
 		m_View.runInAsyncUIThread(new Callable<Boolean>()
 		{
-
 			@Override
 			public Boolean call() throws Exception
 			{
 				m_View.setWidgetEnabled(XPLoggerEvents.START,
 						m_Model.getPath(XPLoggerEvents.INPUT_BROWSE) != null
+						&& 	m_Model.getPath(XPLoggerEvents.INPUT_BROWSE).length() > 0
 								&& !FILE_WATCHER_IS_RUNNING);
 				m_View.setWidgetEnabled(XPLoggerEvents.STOP,
 						m_Model.getPath(XPLoggerEvents.INPUT_BROWSE) != null
@@ -503,12 +505,13 @@ public class XPLoggerPresenter extends
 				m_View.setWidgetEnabled(XPLoggerEvents.NEW_RUN, m_Model
 						.getCurrentRunData().size() > 0);
 				m_View.setWidgetEnabled(XPLoggerEvents.SCAN,
-						m_Model.getPath(XPLoggerEvents.INPUT_BROWSE) != null);
+						m_Model.getPath(XPLoggerEvents.INPUT_BROWSE) != null
+						&& 	m_Model.getPath(XPLoggerEvents.INPUT_BROWSE).length() > 0);
 				return true;
 			}
 		});
 	}
-
+	
 	protected float roundToMillions(final float p_Value)
 	{
 		return Math.round(p_Value / 10000f) / 100f;
