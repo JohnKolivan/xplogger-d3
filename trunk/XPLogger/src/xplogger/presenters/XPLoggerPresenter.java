@@ -231,7 +231,7 @@ public class XPLoggerPresenter extends
 		g2.dispose();
 
 		/*
-		//outputs the subimage grabbed
+		//outputs the subimage grabbed, debugging purposes
 		try
 		 {
 			 ImageIO.write(finalImage, "png", new
@@ -312,7 +312,7 @@ public class XPLoggerPresenter extends
 			}
 			
 			final BufferedImage expImage = grabSubImage(fullImage,
-					getExpLocation(fullImage), 7); 
+					getExpLocation(fullImage), 5); 
 			
 			final String expBarHoverText = tess.doOCR(expImage).trim()
 					.replaceAll("\\s", "").replace(",", "").replace(".","");
@@ -348,9 +348,12 @@ public class XPLoggerPresenter extends
 				}
 			});
 		}
+		catch(final NumberFormatException p_Exception){
+			
+		}
 		catch (final Exception p_Exception)
 		{
-			log.error(p_Exception.getMessage());
+			//log.error(p_Exception.getMessage());
 		}
 
 		return null;
@@ -364,9 +367,9 @@ public class XPLoggerPresenter extends
 		if( Math.abs(ratio - 1.6f) < 0.05f ){
 			//16:10 aspect ratio
 			x = Math.round((float)p_Image.getWidth() * 0.388f);
-			y = Math.round((float)p_Image.getHeight() * 0.825f);
+			y = Math.round((float)p_Image.getHeight() * 0.8325f);
 			width = Math.round((float)p_Image.getWidth() * 0.6093f) - x;
-			height = Math.round((float)p_Image.getHeight() * 0.8495f) - y;
+			height = Math.round((float)p_Image.getHeight() * 0.8525f) - y;
 		}else if(Math.abs(ratio - 1.77f) < 0.05f){
 			//16:9 aspect ratio
 			x = Math.round((float)p_Image.getWidth() * 0.399f);
