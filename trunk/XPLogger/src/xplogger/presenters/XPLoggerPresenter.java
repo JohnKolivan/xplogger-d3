@@ -312,7 +312,7 @@ public class XPLoggerPresenter extends
 			}
 			
 			final BufferedImage expImage = grabSubImage(fullImage,
-					getExpLocation(fullImage), 5); 
+					getExpLocation(fullImage), 6); 
 			
 			final String expBarHoverText = tess.doOCR(expImage).trim()
 					.replaceAll("\\s", "").replace(",", "").replace(".","");
